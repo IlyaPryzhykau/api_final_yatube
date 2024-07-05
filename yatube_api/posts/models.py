@@ -1,5 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import models
+
+
+MAX_TEXT_LENGTH = 50
+
 
 User = get_user_model()
 
@@ -26,6 +31,16 @@ class Follow(models.Model):
     def __str__(self):
         return f'{self.user} -> {self.following}'
 
+    def clean(self):
+        if self.user == self.following:
+            raise ValidationError("Нельзя подписаться на самого себя.")
+        if Follow.objects.filter(user=self.user, following=self.following).exists():
+            raise ValidationError("Такая подписка уже существует.")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
 
 class Group(models.Model):
     title = models.CharField('Имя группы', max_length=200)
@@ -49,7 +64,6 @@ class Post(models.Model):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='posts',
         verbose_name='Автор'
     )
     image = models.ImageField(
@@ -60,7 +74,6 @@ class Post(models.Model):
     group = models.ForeignKey(
         Group,
         on_delete=models.SET_NULL,
-        related_name='posts',
         verbose_name='Группа',
         blank=True,
         null=True
@@ -69,9 +82,11 @@ class Post(models.Model):
     class Meta:
         verbose_name = 'публикация'
         verbose_name_plural = 'Публикации'
+        default_related_name = 'posts'
 
     def __str__(self):
-        return self.text[:50] + ('...' if len(self.text) > 50 else '')
+        return (self.text[:MAX_TEXT_LENGTH]
+                + ('...' if len(self.text) > MAX_TEXT_LENGTH else ''))
 
 
 class Comment(models.Model):
@@ -99,4 +114,5 @@ class Comment(models.Model):
         verbose_name_plural = 'Комментарии'
 
     def __str__(self):
-        return self.text[:50] + ('...' if len(self.text) > 50 else '')
+        return (self.text[:MAX_TEXT_LENGTH]
+                + ('...' if len(self.text) > MAX_TEXT_LENGTH else ''))
