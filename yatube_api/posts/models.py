@@ -34,7 +34,9 @@ class Follow(models.Model):
     def clean(self):
         if self.user == self.following:
             raise ValidationError("Нельзя подписаться на самого себя.")
-        if Follow.objects.filter(user=self.user, following=self.following).exists():
+        if Follow.objects.filter(
+                user=self.user,
+                following=self.following).exists():
             raise ValidationError("Такая подписка уже существует.")
 
     def save(self, *args, **kwargs):
